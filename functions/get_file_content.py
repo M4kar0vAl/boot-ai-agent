@@ -24,3 +24,22 @@ def get_file_content(working_directory: str, file_path: str) -> str:
             return file_content_string
     except Exception:
         return "Error: could not get file content"
+
+
+schema_get_file_content = {
+    "type": "function",
+    "function": {
+        "name": "get_file_content",
+        "description": f"Get contents of the file in a specified file path relative to the working directory. Returns first {MAX_CHARS} characters of a file or the whole file contents if file is less than {MAX_CHARS} characters.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "File path to get contents of, relative to the working directory",
+                },
+            },
+            "required": ["file_path"]
+        },
+    },
+}

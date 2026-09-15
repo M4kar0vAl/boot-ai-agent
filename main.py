@@ -1,9 +1,11 @@
+import json
 import os
 import argparse
 from dotenv import load_dotenv
 from openai import OpenAI
 
 from prompts import system_prompt
+from call_function import available_functions, call_function
 
 
 load_dotenv()
@@ -21,6 +23,7 @@ def generate_content(client: OpenAI, messages: list[dict]):
     return client.chat.completions.create(
         model="openrouter/free",
         messages=messages,
+        tools=available_functions,
     )
 
 
@@ -51,8 +54,19 @@ def main():
         print(f"Prompt tokens: {usage.prompt_tokens}")
         print(f"Response tokens: {usage.completion_tokens}")
 
-    print("Response:")
-    print(response.choices[0].message.content)
+    message = response.choices[0].message
+    if message.tool_calls:
+        for tool_call in message.tool_calls:
+            result_message = call_function(tool_call, verbose=verbose)
+
+            if not result_message["content"]:
+                raise Exception("Tool call returned empty result")
+
+            if verbose:
+                print(f"-> {result_message['content']}")
+    else:
+        print("Response:")
+        print(message.content)
 
 
 if __name__ == "__main__":
