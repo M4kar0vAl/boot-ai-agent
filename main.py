@@ -1,6 +1,7 @@
 import json
 import os
 import argparse
+import sys
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -42,31 +43,39 @@ def main():
         {"role": "user", "content": args.user_prompt},
     ]
 
-    response = generate_content(client, messages)
+    for _ in range(20):
+        response = generate_content(client, messages)
 
+        if verbose:
+            usage = response.usage
 
-    if verbose:
-        usage = response.usage
+            if usage is None:
+                raise RuntimeError("Cannot get the token usage. Probably, the request has failed")
 
-        if usage is None:
-            raise RuntimeError("Cannot get the token usage. Probably, the request has failed")
+            print(f"Prompt tokens: {usage.prompt_tokens}")
+            print(f"Response tokens: {usage.completion_tokens}")
 
-        print(f"Prompt tokens: {usage.prompt_tokens}")
-        print(f"Response tokens: {usage.completion_tokens}")
+        message = response.choices[0].message
+        messages.append(message)
 
-    message = response.choices[0].message
-    if message.tool_calls:
-        for tool_call in message.tool_calls:
-            result_message = call_function(tool_call, verbose=verbose)
+        if message.tool_calls:
+            for tool_call in message.tool_calls:
+                result_message = call_function(tool_call, verbose=verbose)
 
-            if not result_message["content"]:
-                raise Exception("Tool call returned empty result")
+                if not result_message["content"]:
+                    raise Exception("Tool call returned empty result")
 
-            if verbose:
-                print(f"-> {result_message['content']}")
+                messages.append(result_message)
+
+                if verbose:
+                    print(f"-> {result_message['content']}")
+        else:
+            print("Response:")
+            print(message.content)
+            break
     else:
-        print("Response:")
-        print(message.content)
+        print("Model hasn't produced a result after 20 iterations. Exiting...")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
